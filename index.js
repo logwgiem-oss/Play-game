@@ -8,7 +8,17 @@ app.listen(process.env.PORT || 3000);
 
 const client = new Client({
     authStrategy: new LocalAuth(),
-    puppeteer: { args: ['--no-sandbox', '--disable-setuid-sandbox'] }
+    puppeteer: { 
+        headless: true,
+        // Explicitly force the script to point to Render's global system Chrome installation path
+        executablePath: '/usr/bin/google-chrome', 
+        args: [
+            '--no-sandbox', 
+            '--disable-setuid-sandbox', 
+            '--disable-dev-shm-usage',
+            '--disable-gpu'
+        ] 
+    }
 });
 
 client.on('qr', (qr) => {
