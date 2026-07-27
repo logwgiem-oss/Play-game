@@ -1,50 +1,61 @@
  const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
-const qrcode = require('qrcode-terminal');
 const express = require('express');
 
-// Bypasses Render's port requirements
+// Set up a clean web server layout
 const app = express();
-app.get('/', (req, res) => res.send('Bot is active!'));
+let currentQR = "";
+
+app.get('/', (req, res) => {
+    if (currentQR) {
+        // Generates a clean webpage displaying the QR code image layout directly
+        res.send(`
+            <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#f0f2f5;}</style>
+            <h1>Scan This Code with WhatsApp</h1>
+            <img src="https://qrserver.com{encodeURIComponent(currentQR)}" />
+            <p>Go to WhatsApp > Linked Devices > Link a Device</p>
+        `);
+    } else {
+        res.send('<h1>Bot Status: Active and Linked!</h1>');
+    }
+});
+
 app.listen(process.env.PORT || 3000);
 
 async function startBot() {
-    // Saves your login file cleanly on Render
     const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
     
     const sock = makeWASocket({
         auth: state,
-        printQRInTerminal: false // We use qrcode-terminal manually below for stability
+        printQRInTerminal: false
     });
 
-    // Generates the setup QR code in Render Logs
     sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect, qr } = update;
+        const { connection, qr } = update;
         if (qr) {
-            console.log('--- SCAN THIS CODE WITH WHATSAPP ---');
-            qrcode.generate(qr, { small: true });
+            currentQR = qr;
+            console.log('\n======================================');
+            console.log('👉 CLICK YOUR LIVE SITE LINK TOP LEFT TO SEE THE QR CODE!');
+            console.log('======================================\n');
         }
         if (connection === 'close') {
-            console.log('Connection closed, restarting...');
             startBot();
         } else if (connection === 'open') {
-            console.log('Your WhatsApp Game Bot is live!');
+            currentQR = "";
+            console.log('✅ Connected! Your WhatsApp Game Bot is running 24/7!');
         }
     });
 
     sock.ev.on('creds.update', saveCreds);
 
-    // Listens for the trigger words and replies with your link
     sock.ev.on('messages.upsert', async m => {
-        const msg = m.messages[0];
+        const msg = m.messages;
         if (!msg.message || msg.key.fromMe) return;
-
-        // Extracts the incoming text message
         const text = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
 
         if (text.toLowerCase() === 'play game') {
             const jid = msg.key.remoteJid;
             await sock.sendMessage(jid, { 
-                text: '🎮 Load the shooter game here:\nhttp://logwgiem-oss.github.io/Online-Shooter/n' 
+                text: '🎮 Load the shooter game here:\nhttp://logwgiem-oss.github.io/Online-Shooter/' 
             });
         }
     });
