@@ -10,8 +10,7 @@ const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: { 
         headless: true,
-        // Explicitly force the script to point to Render's global system Chrome installation path
-        executablePath: '/usr/bin/google-chrome', 
+        // Removed the hardcoded path so it uses the downloaded Chrome in the cache folder automatically
         args: [
             '--no-sandbox', 
             '--disable-setuid-sandbox', 
