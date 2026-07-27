@@ -1,13 +1,11 @@
  const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const express = require('express');
 
-// Set up a clean web server layout
 const app = express();
 let currentQR = "";
 
 app.get('/', (req, res) => {
     if (currentQR) {
-        // Generates a clean webpage displaying the QR code image layout directly
         res.send(`
             <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#f0f2f5;}</style>
             <h1>Scan This Code with WhatsApp</h1>
@@ -22,7 +20,8 @@ app.get('/', (req, res) => {
 app.listen(process.env.PORT || 3000);
 
 async function startBot() {
-    const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
+    // Changed folder name here to reset the fake login connection
+    const { state, saveCreds } = await useMultiFileAuthState('auth_info_reset_final');
     
     const sock = makeWASocket({
         auth: state,
@@ -33,9 +32,7 @@ async function startBot() {
         const { connection, qr } = update;
         if (qr) {
             currentQR = qr;
-            console.log('\n======================================');
-            console.log('👉 CLICK YOUR LIVE SITE LINK TOP LEFT TO SEE THE QR CODE!');
-            console.log('======================================\n');
+            console.log('\n👉 FRESH QR CODE GENERATED ON YOUR LIVE LINK! 👈\n');
         }
         if (connection === 'close') {
             startBot();
@@ -48,7 +45,7 @@ async function startBot() {
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('messages.upsert', async m => {
-        const msg = m.messages;
+        const msg = m.messages[0];
         if (!msg.message || msg.key.fromMe) return;
         const text = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
 
