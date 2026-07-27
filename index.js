@@ -1,4 +1,4 @@
- const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const express = require('express');
 
 const app = express();
@@ -20,8 +20,8 @@ app.get('/', (req, res) => {
 app.listen(process.env.PORT || 3000);
 
 async function startBot() {
-    // Changed folder name here to reset the fake login connection
-    const { state, saveCreds } = await useMultiFileAuthState('auth_info_reset_final');
+    // This folder name is uniquely generated to break the ghost connection loop completely
+    const { state, saveCreds } = await useMultiFileAuthState('auth_session_force_reset_v5');
     
     const sock = makeWASocket({
         auth: state,
@@ -45,14 +45,14 @@ async function startBot() {
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('messages.upsert', async m => {
-        const msg = m.messages[0];
+        const msg = m.messages;
         if (!msg.message || msg.key.fromMe) return;
         const text = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
 
         if (text.toLowerCase() === 'play game') {
             const jid = msg.key.remoteJid;
             await sock.sendMessage(jid, { 
-                text: '🎮 Load the shooter game here:\nhttp://logwgiem-oss.github.io/Online-Shooter/' 
+                text: '🎮 Load the shooter game here:\nhttp://logwgiem-oss.github.io/Online-Shooter/'
             });
         }
     });
