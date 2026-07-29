@@ -3,12 +3,12 @@ const express = require('express');
 
 const app = express();
 let pairingCode = "";
-// 👇 PUT YOUR COUNTRY CODE + WHATSAPP PHONE NUMBER HERE 👇
+// 👇 CHANGE THIS TO YOUR REAL COUNTRY CODE + PHONE NUMBER (NO SPACES OR PLUS SIGNS) 👇
 const MY_NUMBER = "‎⁨‪+44 7856 010438‬⁩"; 
 
 app.get('/', (req, res) => {
     if (pairingCode) {
-        // Generates an official, clickable deep-link directly into WhatsApp
+        // FIXED: This line correctly formats your unique setup code into a variable
         const cleanCode = pairingCode.replace('-', '');
         const waLink = `https://wa.me{cleanCode}`;
         
@@ -27,8 +27,8 @@ app.get('/', (req, res) => {
 app.listen(process.env.PORT || 3000);
 
 async function startBot() {
-    // Fresh session ID to prevent cache loop locks
-    const { state, saveCreds } = await useMultiFileAuthState('auth_session_direct_link_v1');
+    // Unique folder name to reset any broken session states
+    const { state, saveCreds } = await useMultiFileAuthState('auth_session_direct_fixed_v3');
     
     const sock = makeWASocket({
         auth: state,
