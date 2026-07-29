@@ -2,22 +2,17 @@ const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysocket
 const express = require('express');
 
 const app = express();
-let pairingCode = "";
-// 👇 CHANGE THIS TO YOUR REAL COUNTRY CODE + PHONE NUMBER (NO SPACES OR PLUS SIGNS) 👇
-const MY_NUMBER = "‎⁨‪+44 7856 010438‬⁩"; 
+let currentQR = "";
 
+// Serves a dynamic webpage layout that displays the live connection QR code
 app.get('/', (req, res) => {
-    if (pairingCode) {
-        // FIXED: This line correctly formats your unique setup code into a variable
-        const cleanCode = pairingCode.replace('-', '');
-        const waLink = `https://wa.me{cleanCode}`;
-        
+    if (currentQR) {
         res.send(`
-            <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#f0f2f5;} .btn{display:inline-block;padding:20px 40px;background:#25D366;color:white;text-decoration:none;font-size:24px;font-weight:bold;border-radius:50px;box-shadow:0 4px 15px rgba(37,211,102,0.4);}</style>
-            <h1>WhatsApp Connection Link</h1>
-            <p style="font-size:18px; color:#555;">Tap the green button below to link your device instantly:</p>
-            <a href="${waLink}" target="_blank" class="btn">👉 CLICK TO LINK WHATSAPP</a>
-            <p style="margin-top:20px; font-weight:bold; font-size:20px; color:#333;">Backup Manual Code: ${pairingCode}</p>
+            <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#f0f2f5;}</style>
+            <h1>Scan This Code with WhatsApp</h1>
+            <img src="https://qrserver.com{encodeURIComponent(currentQR)}" />
+            <p style="margin-top:20px; font-size:18px; color:#555;">Go to WhatsApp > Linked Devices > Link a Device</p>
+            <script>setTimeout(() => { location.reload(); }, 10000);</script>
         `);
     } else {
         res.send('<h1>Bot Status: Active and Linked!</h1>');
@@ -27,40 +22,33 @@ app.get('/', (req, res) => {
 app.listen(process.env.PORT || 3000);
 
 async function startBot() {
-    // Unique folder name to reset any broken session states
-    const { state, saveCreds } = await useMultiFileAuthState('auth_session_direct_fixed_v3');
+    // Unique version name to completely destroy all old broken cache links
+    const { state, saveCreds } = await useMultiFileAuthState('auth_session_qr_fresh_v9');
     
     const sock = makeWASocket({
         auth: state,
         printQRInTerminal: false
     });
 
-    if (!sock.authState.creds.registered) {
-        setTimeout(async () => {
-            try {
-                let code = await sock.requestPairingCode(MY_NUMBER);
-                pairingCode = code.match(/.{1,4}/g).join('-'); 
-                console.log(`Link generated for code: ${pairingCode}`);
-            } catch (err) {
-                console.log('Error fetching pairing code:', err);
-            }
-        }, 3000);
-    }
-
     sock.ev.on('connection.update', (update) => {
-        const { connection } = update;
+        const { connection, qr } = update;
+        // Captures WhatsApp's security QR codes dynamically on rotation
+        if (qr) {
+            currentQR = qr;
+            console.log('New login QR Code broadcasted.');
+        }
         if (connection === 'close') {
             startBot();
         } else if (connection === 'open') {
-            pairingCode = "";
-            console.log('✅ Connected!');
+            currentQR = "";
+            console.log('✅ Connected! Bot is running 24/7!');
         }
     });
 
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('messages.upsert', async m => {
-        const msg = m.messages;
+        const msg = m.messages[0]; // Captures the array object cleanly
         if (!msg.message || msg.key.fromMe) return;
         const text = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
 
@@ -74,5 +62,6 @@ async function startBot() {
 }
 
 startBot();
+
 
 
