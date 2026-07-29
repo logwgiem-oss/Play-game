@@ -24,7 +24,6 @@ app.get('/', (req, res) => {
 app.listen(process.env.PORT || 3000);
 
 async function startBot() {
-    // Unique session ID name to guarantee a clean connection state
     const { state, saveCreds } = await useMultiFileAuthState('auth_session_qr_native_v1');
     
     const sock = makeWASocket({
@@ -34,12 +33,9 @@ async function startBot() {
 
     sock.ev.on('connection.update', (update) => {
         const { connection, qr } = update;
-        if (qr) {
-            currentQR = qr;
-        }
-        if (connection === 'close') {
-            startBot();
-        } else if (connection === 'open') {
+        if (qr) currentQR = qr;
+        if (connection === 'close') startBot();
+        if (connection === 'open') {
             currentQR = "";
             console.log('✅ Connected!');
         }
@@ -47,28 +43,31 @@ async function startBot() {
 
     sock.ev.on('creds.update', saveCreds);
 
-    // Listens for incoming texts from your friends or yourself
+    // Listens for triggers
     sock.ev.on('messages.upsert', async m => {
         if (!m.messages || m.messages.length === 0) return;
         const msg = m.messages[0]; 
-        
         if (!msg.message) return;
         
-        // Correctly checks both standard text strings and extended text inputs
-        const text = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
+        const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || "").toLowerCase().trim();
+        const jid = msg.key.remoteJid;
 
-        if (text.toLowerCase().trim() === 'play game') {
-            const jid = msg.key.remoteJid;
-            console.log(`Sending shooter launcher link to: ${jid}`);
-
-            // Fires back your shooter game link automatically
+        // Choice 1: play game
+        if (text === 'play game') {
             await sock.sendMessage(jid, { 
-                text: '🎮 Load the shooter game here:\nhttp://logwgiem-oss.github.io/Online-Shooter/' 
+                text: '```🎮 ONLINE SHOOTER LAUNCHER:```\nhttp://logwgiem-oss.github.io/Online-Shooter/' 
+            });
+        } 
+        // Choice 2: show games
+        else if (text === 'show games') {
+            await sock.sendMessage(jid, { 
+                text: '```🕹️ MY GDEVELOP PROFILE GAMES:```\nhttps://gd.games/lowgiem' 
             });
         }
     });
 }
 
 startBot();
+
 
 
