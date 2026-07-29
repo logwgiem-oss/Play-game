@@ -1,34 +1,59 @@
 const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
+const express = require('express');
+
+const app = express();
+let pairingCode = "";
+// 👇 PUT YOUR COUNTRY CODE + WHATSAPP PHONE NUMBER HERE 👇
+const MY_NUMBER = "‎⁨‪+44 7856 010438‬⁩"; 
+
+app.get('/', (req, res) => {
+    if (pairingCode) {
+        // Generates an official, clickable deep-link directly into WhatsApp
+        const cleanCode = pairingCode.replace('-', '');
+        const waLink = `https://wa.me{cleanCode}`;
+        
+        res.send(`
+            <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#f0f2f5;} .btn{display:inline-block;padding:20px 40px;background:#25D366;color:white;text-decoration:none;font-size:24px;font-weight:bold;border-radius:50px;box-shadow:0 4px 15px rgba(37,211,102,0.4);}</style>
+            <h1>WhatsApp Connection Link</h1>
+            <p style="font-size:18px; color:#555;">Tap the green button below to link your device instantly:</p>
+            <a href="${waLink}" target="_blank" class="btn">👉 CLICK TO LINK WHATSAPP</a>
+            <p style="margin-top:20px; font-weight:bold; font-size:20px; color:#333;">Backup Manual Code: ${pairingCode}</p>
+        `);
+    } else {
+        res.send('<h1>Bot Status: Active and Linked!</h1>');
+    }
+});
+
+app.listen(process.env.PORT || 3000);
 
 async function startBot() {
-    // Brand new folder ID to reset all errors
-    const { state, saveCreds } = await useMultiFileAuthState('auth_session_final_code_v9');
+    // Fresh session ID to prevent cache loop locks
+    const { state, saveCreds } = await useMultiFileAuthState('auth_session_direct_link_v1');
     
     const sock = makeWASocket({
         auth: state,
         printQRInTerminal: false
     });
 
-    // Requests the code and prints it directly in the Render logs
-    setTimeout(async () => {
-        try {
-            // Make sure your phone number is typed below inside the quotes!
-            let code = await sock.requestPairingCode('‎⁨‪+44 7856 010438‬⁩');
-            let formattedCode = code.match(/.{1,4}/g).join('-'); 
-            console.log('\n======================================');
-            console.log(`👉 YOUR WHATSAPP CODE IS: ${formattedCode} 👈`);
-            console.log('======================================\n');
-        } catch (err) {
-            console.log('Error requesting pairing code:', err);
-        }
-    }, 5000);
+    if (!sock.authState.creds.registered) {
+        setTimeout(async () => {
+            try {
+                let code = await sock.requestPairingCode(MY_NUMBER);
+                pairingCode = code.match(/.{1,4}/g).join('-'); 
+                console.log(`Link generated for code: ${pairingCode}`);
+            } catch (err) {
+                console.log('Error fetching pairing code:', err);
+            }
+        }, 3000);
+    }
 
     sock.ev.on('connection.update', (update) => {
         const { connection } = update;
         if (connection === 'close') {
             startBot();
         } else if (connection === 'open') {
-            console.log('✅ Connected! Your Bot is running 24/7!');
+            pairingCode = "";
+            console.log('✅ Connected!');
         }
     });
 
@@ -49,4 +74,5 @@ async function startBot() {
 }
 
 startBot();
+
 
