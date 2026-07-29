@@ -24,7 +24,7 @@ app.get('/', (req, res) => {
 app.listen(process.env.PORT || 3000);
 
 async function startBot() {
-    // Keeps you logged into Render automatically across server restarts
+    // Unique session ID name to guarantee a clean connection state
     const { state, saveCreds } = await useMultiFileAuthState('auth_session_qr_native_v1');
     
     const sock = makeWASocket({
@@ -47,19 +47,21 @@ async function startBot() {
 
     sock.ev.on('creds.update', saveCreds);
 
-    // FIXED: Correctly pulls messages out of the array to trigger responses
+    // Listens for incoming texts from your friends or yourself
     sock.ev.on('messages.upsert', async m => {
         if (!m.messages || m.messages.length === 0) return;
         const msg = m.messages[0]; 
         
-        if (!msg.message || msg.key.fromMe) return;
+        if (!msg.message) return;
         
+        // Correctly checks both standard text strings and extended text inputs
         const text = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
 
         if (text.toLowerCase().trim() === 'play game') {
             const jid = msg.key.remoteJid;
-            console.log(`Valid trigger received from: ${jid}`);
+            console.log(`Sending shooter launcher link to: ${jid}`);
 
+            // Fires back your shooter game link automatically
             await sock.sendMessage(jid, { 
                 text: '🎮 Load the shooter game here:\nhttp://logwgiem-oss.github.io/Online-Shooter/' 
             });
@@ -68,4 +70,5 @@ async function startBot() {
 }
 
 startBot();
+
 
